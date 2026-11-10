@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>pwhelper 自测页（iframe 版本）</title>
+  <style>
+    body { margin: 0; padding: 16px; font-family: 'Microsoft YaHei', sans-serif; background: #eef1f7; }
+    h1 { font-size: 16px; }
+    iframe { width: 640px; height: 460px; border: 2px solid #5b7cfa; border-radius: 10px; background: #fff; }
+    .tip { color: #555; font-size: 13px; }
+    input#outerInput { padding: 6px 10px; }
+  </style>
+</head>
+<body>
+  <h1>iframe 拾取自测页</h1>
+  <p class="tip">登录表单位于下方 iframe 内，用于验证跨域/多 frame 场景下的拾取与填充。外面还有一个输入框：<input id="outerInput" placeholder="外层输入框"></p>
+  <iframe id="loginFrame" src="login-demo.html" title="登录表单"></iframe>
+</body>
+</html>

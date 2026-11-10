@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pwhelper 自动填充助手</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-logo">P</span>
+        <div class="brand-text">
+          <h1 class="brand-title">pwhelper</h1>
+          <p class="brand-sub">表单自动填充助手</p>
+        </div>
+      </div>
+      <div class="site-chip" id="siteChip" title="当前站点">…</div>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button type="button" class="tab is-active" data-tab="fill">填充</button>
+      <button type="button" class="tab" data-tab="record">记录</button>
+      <button type="button" class="tab" data-tab="manage">管理</button>
+      <span class="tab-underline" id="tabUnderline"></span>
+    </nav>
+
+    <main class="panels">
+      <!-- 填充 -->
+      <section class="panel is-active" id="panel-fill">
+        <div class="panel-head">
+          <h2 class="panel-title">当前站点方案</h2>
+          <span class="badge" id="fillCount">0</span>
+        </div>
+
+        <!-- 浏览器原生登录弹窗（HTTP Basic 认证）凭据 -->
+        <div class="auth-card" id="httpAuthCard" hidden>
+          <div class="auth-head">
+            <span>HTTP 认证凭据</span>
+            <span class="chip" id="httpAuthState">未录入</span>
+          </div>
+          <p class="hint" id="httpAuthHint"></p>
+
+          <div class="auth-row" id="httpAuthSaved" hidden>
+            <span class="item-label">账号</span>
+            <span class="auth-user" id="httpAuthUser"></span>
+            <button type="button" class="btn btn-mini" id="btnHttpAuthEdit">修改</button>
+            <button type="button" class="btn btn-mini is-danger" id="btnHttpAuthClear">清除</button>
+          </div>
+
+          <div id="httpAuthForm" hidden>
+            <div class="row">
+              <label class="row-label" for="httpAuthUsername">账号</label>
+              <input type="text" id="httpAuthUsername" class="input" placeholder="登录用户名" autocomplete="off">
+            </div>
+            <div class="row">
+              <label class="row-label" for="httpAuthPassword">密码</label>
+              <input type="password" id="httpAuthPassword" class="input" placeholder="登录密码" autocomplete="off">
+            </div>
+            <button type="button" class="btn btn-primary btn-block" id="btnHttpAuthSave">保存并重新加载页面</button>
+          </div>
+        </div>
+
+        <div class="scheme-list" id="fillList"></div>
+        <div class="empty" id="fillEmpty">
+          <div class="empty-icon">◎</div>
+          <p class="empty-title">还没有任何配置</p>
+          <p class="empty-text">切换到「记录」页签，点击「开始拾取输入框」，把要填的字段记录下来。</p>
+        </div>
+        <p class="hint">插件不会在网页里常驻监听，只有在你点开它时才注入并生效。开启「点开即填充」的方案，会在打开面板时自动填入。</p>
+      </section>
+
+      <!-- 记录 -->
+      <section class="panel" id="panel-record">
+        <button type="button" class="btn btn-primary btn-block" id="btnStartPick">开始拾取输入框</button>
+        <p class="hint">点击后回到页面：鼠标划过输入框会高亮，点击它 → 在浮层里填写「标签」与「填充内容」→ 选「保存，继续拾取」可连续记录多项，最后点「完成」。</p>
+
+        <div class="record-session" id="recordSession" hidden>
+          <div class="row">
+            <label class="row-label" for="schemeNameInput">方案名称</label>
+            <input type="text" id="schemeNameInput" class="input" placeholder="例如：工作号">
+          </div>
+
+          <label class="switch" for="autoFillInput">
+            <span>点开插件时自动填充</span>
+            <input type="checkbox" id="autoFillInput">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+
+          <div class="picked-list" id="pickedList"></div>
+
+          <button type="button" class="btn btn-ghost btn-block" id="btnResumePick">继续在页面拾取</button>
+
+          <div class="actions">
+            <button type="button" class="btn btn-primary" id="btnSaveScheme">保存方案</button>
+            <button type="button" class="btn btn-ghost" id="btnCancelPick">放弃</button>
+          </div>
+        </div>
+
+        <div class="picking-tip" id="pickingTip" hidden>
+          <span class="dot"></span> 拾取进行中，回到页面点击输入框
+        </div>
+      </section>
+
+      <!-- 管理 -->
+      <section class="panel" id="panel-manage">
+        <div class="panel-head">
+          <h2 class="panel-title">全部配置</h2>
+          <div class="head-actions">
+            <button type="button" class="btn btn-mini" id="btnImport">导入</button>
+            <button type="button" class="btn btn-mini btn-primary" id="btnExport">导出</button>
+          </div>
+        </div>
+        <div class="manage-search">
+          <input type="text" id="manageSearch" class="input" placeholder="模糊搜索：配置名称 / 站点 / 方案 / 字段"
+                 autocomplete="off" spellcheck="false">
+          <button type="button" class="btn btn-mini btn-ghost" id="btnManageSearchClear" hidden>清空</button>
+        </div>
+
+        <div class="manage-list" id="manageList"></div>
+        <div class="empty" id="manageEmpty">
+          <div class="empty-icon">▤</div>
+          <p class="empty-title">暂无配置</p>
+          <p class="empty-text">记录任意站点后，可在此统一维护、导入或导出。</p>
+        </div>
+        <div class="empty" id="manageNoMatch" hidden>
+          <div class="empty-icon">⌕</div>
+          <p class="empty-title">没有匹配的配置</p>
+          <p class="empty-text">换个关键词试试，或点「清空」查看全部配置。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 导入弹层 -->
+  <div class="modal" id="importModal" hidden>
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-card">
+      <h3 class="modal-title">导入配置</h3>
+
+      <div class="seg" id="importSource">
+        <button type="button" class="seg-btn is-active" data-src="file">选择文件</button>
+        <button type="button" class="seg-btn" data-src="text">粘贴 JSON</button>
+      </div>
+
+      <div class="import-file" id="importFileWrap">
+        <input type="file" id="importFile" accept="application/json,.json">
+      </div>
+
+      <div class="import-text" id="importTextWrap" hidden>
+        <textarea id="importText" class="textarea" placeholder='粘贴 pwhelper 导出的 JSON，例如 {"app":"pwhelper","version":1,"profiles":[...]}'></textarea>
+      </div>
+
+      <div class="seg" id="importStrategy">
+        <button type="button" class="seg-btn is-active" data-strategy="merge">合并（同 id 覆盖）</button>
+        <button type="button" class="seg-btn" data-strategy="replace">全量替换</button>
+      </div>
+
+      <div class="import-pwd" id="importPwdWrap" hidden>
+        <div class="row">
+          <label class="row-label" for="importPassword">解密密码</label>
+          <input type="password" id="importPassword" class="input" placeholder="导出时设置的密码">
+        </div>
+        <button type="button" class="btn btn-ghost btn-block" id="btnDecrypt">解密并校验</button>
+        <p class="hint">这是一个加密配置文件，输入密码后才能预览与导入。</p>
+      </div>
+
+      <div class="preview" id="importPreview" hidden></div>
+      <div class="errors" id="importErrors" hidden></div>
+
+      <div class="conflicts" id="importConflicts" hidden>
+        <div class="conflict-head">
+          <span id="conflictTitle">检测到冲突</span>
+          <button type="button" class="btn btn-mini btn-ghost" id="btnConflictReveal">显示明文</button>
+        </div>
+        <div class="conflict-batch">
+          <button type="button" class="btn btn-mini" id="btnConflictAllCurrent">全部保留现有</button>
+          <button type="button" class="btn btn-mini" id="btnConflictAllIncoming">全部使用导入</button>
+        </div>
+        <div class="conflict-list" id="conflictList"></div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="btnImportConfirm">确认导入</button>
+        <button type="button" class="btn btn-ghost" data-close="1">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导出弹层 -->
+  <div class="modal" id="exportModal" hidden>
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-card">
+      <h3 class="modal-title">导出配置</h3>
+
+      <label class="switch" for="exportEncrypt">
+        <span>加密导出</span>
+        <input type="checkbox" id="exportEncrypt">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+      </label>
+
+      <div id="exportPwdWrap" hidden>
+        <div class="row">
+          <label class="row-label" for="exportPassword">密码</label>
+          <input type="password" id="exportPassword" class="input" placeholder="至少 6 位">
+        </div>
+        <div class="row">
+          <label class="row-label" for="exportPassword2">确认密码</label>
+          <input type="password" id="exportPassword2" class="input" placeholder="再输入一次">
+        </div>
+        <p class="hint">AES-GCM + PBKDF2(SHA-256, 15 万次)。密码不会被保存，遗忘后无法恢复，请另行保管。</p>
+      </div>
+
+      <div class="preview" id="exportPreview">正在读取配置…</div>
+      <div class="errors" id="exportErrors" hidden></div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="btnExportConfirm">导出文件</button>
+        <button type="button" class="btn btn-ghost" data-close="1">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="../shared/util.js"></script>
+  <script src="../shared/schema.js"></script>
+  <script src="../shared/crypto.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

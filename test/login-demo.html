@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pwhelper 自测登录页</title>
+  <style>
+    :root {
+      --primary-1: #5b7cfa;
+      --primary-2: #7c5cff;
+      --bg: #0f1117;
+      --card: #191c26;
+      --text: #ffffff;
+      --sub: #a9b0c3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, 'Segoe UI', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(120% 80% at 10% -10%, rgba(91,124,250,.3), transparent 60%),
+        radial-gradient(100% 70% at 110% 0%, rgba(124,92,255,.25), transparent 55%),
+        linear-gradient(180deg, #0f1117, #0b0d12);
+    }
+    .card {
+      width: 340px;
+      padding: 28px;
+      border-radius: 16px;
+      background: rgba(25,28,38,.9);
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 20px 50px rgba(0,0,0,.5);
+    }
+    h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+    p.sub { margin: 0 0 22px; color: var(--sub); font-size: 13px; }
+    .field { margin-bottom: 14px; }
+    label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--sub); }
+    input {
+      width: 100%;
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(37,41,54,.9);
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus { border-color: var(--primary-1); box-shadow: 0 0 0 3px rgba(91,124,250,.22); }
+    button {
+      width: 100%;
+      height: 40px;
+      margin-top: 6px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(91,124,250,.35);
+    }
+    button:active { transform: scale(.98); }
+    .tips { margin-top: 18px; font-size: 11px; line-height: 1.8; color: #6b7280; }
+    .state { margin-top: 14px; padding: 10px; border-radius: 8px; background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.3); color: #34d399; font-size: 12px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <form class="card" id="loginForm">
+    <h1>登录演示</h1>
+    <p class="sub">pwhelper 自测页面 · 含一个受控组件</p>
+
+    <div class="field">
+      <label for="username">账号</label>
+      <input type="text" id="username" name="username" placeholder="请输入账号" autocomplete="username">
+    </div>
+
+    <div class="field">
+      <label for="password">密码</label>
+      <input type="password" id="password" name="password" placeholder="请输入密码" autocomplete="current-password">
+    </div>
+
+    <div class="field">
+      <label for="captcha">验证码</label>
+      <input type="text" id="captcha" name="captcha" placeholder="6 位验证码">
+    </div>
+
+    <div class="field">
+      <label for="tenant">所属租户（受控组件）</label>
+      <!-- 模拟 React/Vue 受控输入：只有收到 input 事件才会回写 state 并渲染 -->
+      <input type="text" id="tenant" name="tenant" placeholder="受控组件">
+    </div>
+
+    <button type="submit">登 录</button>
+
+    <div class="state" id="stateBox">受控组件 state：空</div>
+
+    <div class="tips">
+      自测步骤：<br>
+      1. 点击插件 → 记录 → 开始拾取输入框<br>
+      2. 依次点击上面 4 个输入框并填写内容<br>
+      3. 点「完成」保存方案<br>
+      4. 刷新页面验证自动填充 / 手动填充<br>
+      5. 管理页签导出 JSON，再导入还原
+    </div>
+  </form>
+
+  <script>
+    // 模拟受控组件：value 完全由 state 驱动，用来验证填充是否触发了框架可感知的 input 事件
+    (function () {
+      var tenant = document.getElementById('tenant');
+      var box = document.getElementById('stateBox');
+      var state = { tenant: '' };
+
+      tenant.addEventListener('input', function (e) {
+        state.tenant = e.target.value;
+        // 框架会把 state 回写到 DOM
+        tenant.value = state.tenant;
+        box.textContent = '受控组件 state：' + (state.tenant || '空');
+      });
+
+      document.getElementById('loginForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        box.textContent = '提交时的值：' + JSON.stringify({
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+          captcha: document.getElementById('captcha').value,
+          tenant: state.tenant
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "pwhelper 自动填充助手",
+  "version": "1.0.0",
+  "description": "记录网页输入框与要填充的内容，支持一键填充、自动填充任意多个表单字段，配置可导入导出。",
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "downloads",
+    "webRequest",
+    "webRequestAuthProvider"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "pwhelper 自动填充助手"
+  }
+}
