@@ -635,6 +635,18 @@ body {
   margin-bottom: 10px;
 }
 
+/* 云同步弹层顶部的云端状态条 */
+.sync-cloud {
+  padding: 8px 12px;
+  border-radius: var(--radius-m);
+  background: rgba(91, 124, 250, 0.1);
+  border: 1px solid rgba(91, 124, 250, 0.3);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
 .manage-search .input {
   flex: 1;
   min-width: 0;

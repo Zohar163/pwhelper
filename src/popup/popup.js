@@ -1066,6 +1066,166 @@
     });
   }
 
+  /* ------------------------- 云同步（浏览器账号云端） ------------------------- */
+
+  function showSyncError(msg) {
+    var box = $('syncErrors');
+    box.hidden = false;
+    box.textContent = msg;
+  }
+
+  function fmtCloudTime(iso) {
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? String(iso || '') : d.toLocaleString();
+  }
+
+  function renderSyncModal(info) {
+    var cloud = (info && info.cloud) || {};
+    var el = $('syncCloudInfo');
+
+    if (cloud.exists) {
+      var kb = Math.round((cloud.bytes || 0) / 102.4) / 10;
+      el.textContent = '云端已有备份：' + fmtCloudTime(cloud.updatedAt)
+        + ' · 来自 ' + (cloud.device || '未知设备')
+        + ' · ' + kb + ' KB（密文）';
+      $('btnSyncRestore').disabled = false;
+      $('btnSyncClear').hidden = false;
+    } else {
+      el.textContent = '云端暂无备份。上传后，其他已登录同一浏览器账号的设备即可恢复。';
+      $('btnSyncRestore').disabled = true;
+      $('btnSyncClear').hidden = true;
+    }
+
+    $('syncRemember').checked = !!(info && info.remembered);
+    $('btnSyncForget').hidden = !(info && info.remembered);
+    $('syncMaster').placeholder = (info && info.remembered) ? '已记住主密码，不填则直接使用' : '至少 6 位';
+
+    var hint = $('syncRememberHint');
+    hint.hidden = !(info && info.remembered);
+    if (info && info.remembered) {
+      hint.textContent = '已在本机记住主密码；更换密码后请重新上传覆盖云端，或点「忘记主密码」清除。';
+    }
+  }
+
+  function openSyncModal() {
+    var modal = $('syncModal');
+    modal.hidden = false;
+    $('syncPreview').hidden = true;
+    $('syncErrors').hidden = true;
+    $('syncMaster').value = '';
+    $('syncCloudInfo').textContent = '正在读取云端状态…';
+
+    send({ type: 'PW_SYNC_STATE' }).then(function (res) {
+      if (!res || !res.ok) {
+        $('syncCloudInfo').textContent = '读取云端状态失败';
+        showSyncError((res && res.error) || '');
+        return;
+      }
+      state.syncInfo = res;
+      renderSyncModal(res);
+    });
+  }
+
+  function withBusy(btn, label, run) {
+    var origin = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = label;
+    return Promise.resolve().then(run).then(function () {
+      btn.disabled = false;
+      btn.textContent = origin;
+    });
+  }
+
+  function refreshSyncState() {
+    return send({ type: 'PW_SYNC_STATE' }).then(function (s) {
+      if (s && s.ok) {
+        state.syncInfo = s;
+        renderSyncModal(s);
+      }
+    });
+  }
+
+  function doSyncUpload() {
+    var pwd = $('syncMaster').value;
+    var remembered = !!(state.syncInfo && state.syncInfo.remembered);
+    if (!pwd && !remembered) { showSyncError('请先输入主密码（至少 6 位）'); return; }
+    $('syncErrors').hidden = true;
+
+    withBusy($('btnSyncUpload'), '上传中…', function () {
+      return send({
+        type: 'PW_SYNC_UPLOAD',
+        masterPassword: pwd,
+        remember: $('syncRemember').checked
+      }).then(function (res) {
+        if (!res || !res.ok) { showSyncError((res && res.error) || '上传失败'); return; }
+        var st = res.stats || {};
+        toast('已上传到云端：' + st.sites + ' 个站点 / ' + st.schemes + ' 套方案 / ' + st.items + ' 个字段', 'ok');
+        $('syncPreview').hidden = false;
+        $('syncPreview').textContent = '已上传 ' + res.chunkCount + ' 片密文，共 '
+          + (Math.round((res.bytes || 0) / 102.4) / 10) + ' KB（' + fmtCloudTime(res.updatedAt) + '）';
+        return refreshSyncState();
+      });
+    });
+  }
+
+  function doSyncRestore() {
+    var pwd = $('syncMaster').value;
+    var remembered = !!(state.syncInfo && state.syncInfo.remembered);
+    if (!pwd && !remembered) { showSyncError('请先输入主密码'); return; }
+    $('syncErrors').hidden = true;
+
+    withBusy($('btnSyncRestore'), '读取中…', function () {
+      return send({ type: 'PW_SYNC_DOWNLOAD', masterPassword: pwd }).then(function (res) {
+        if (!res || !res.ok) { showSyncError((res && res.error) || '恢复失败'); return; }
+
+        // 进入与文件导入一致的预览 / 冲突裁决流程，确认后才落库
+        $('syncModal').hidden = true;
+        $('importModal').hidden = false;
+        $('importText').value = '';
+        $('importFile').value = '';
+        hideImportSections();
+        resetImportState();
+        applyImportConfig(res.config);
+      });
+    });
+  }
+
+  function doSyncClear() {
+    if (!window.confirm('删除云端备份？本机配置不受影响，但其他设备将无法再恢复。')) return;
+    send({ type: 'PW_SYNC_CLEAR' }).then(function (res) {
+      if (!res || !res.ok) { showSyncError((res && res.error) || '清除失败'); return; }
+      toast('已清除云端备份', 'ok');
+      $('syncPreview').hidden = true;
+      return refreshSyncState();
+    });
+  }
+
+  function doSyncForget() {
+    if (!window.confirm('清除本机记住的主密码？之后上传/恢复需要手动输入。')) return;
+    send({ type: 'PW_SYNC_FORGET' }).then(function (res) {
+      if (!res || !res.ok) { showSyncError((res && res.error) || '操作失败'); return; }
+      toast('已清除本机记住的主密码', 'ok');
+      return refreshSyncState();
+    });
+  }
+
+  function bindSyncModal() {
+    var modal = $('syncModal');
+
+    $('btnSync').addEventListener('click', openSyncModal);
+    $('btnSyncUpload').addEventListener('click', doSyncUpload);
+    $('btnSyncRestore').addEventListener('click', doSyncRestore);
+    $('btnSyncClear').addEventListener('click', doSyncClear);
+    $('btnSyncForget').addEventListener('click', doSyncForget);
+    $('syncMaster').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') doSyncUpload();
+    });
+
+    Array.prototype.forEach.call(modal.querySelectorAll('[data-close]'), function (node) {
+      node.addEventListener('click', function () { modal.hidden = true; });
+    });
+  }
+
   function bindManageSearch() {
     var box = $('manageSearch');
     var clear = $('btnManageSearchClear');
@@ -1092,6 +1252,7 @@
     bindImportModal();
     bindHttpAuth();
     bindManageSearch();
+    bindSyncModal();
 
     $('btnStartPick').addEventListener('click', function () {
       send({ type: 'PW_PICK_START', url: state.url }).then(function (res) {

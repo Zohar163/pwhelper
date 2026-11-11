@@ -6,12 +6,14 @@
  *  - 不在后台巡检标签页：站点匹配只在用户点开插件时发生
  */
 /* global importScripts, chrome */
-importScripts('../shared/util.js', '../shared/schema.js', '../shared/config-store.js');
+importScripts('../shared/util.js', '../shared/schema.js', '../shared/crypto.js', '../shared/sync-store.js', '../shared/config-store.js');
 
 var PW = self.PW;
 var util = PW.util;
 var schema = PW.schema;
 var store = PW.store;
+var pwcrypto = PW.crypto;
+var syncStore = PW.syncStore;
 
 var FILES = [
   'src/shared/util.js',
@@ -600,6 +602,66 @@ handlers.PW_AUTOFILL_QUERY = function (msg, tabId, tabUrl) {
     if (!plan) return ok({ items: [] });
     return ok(plan);
   });
+};
+
+/* --------------------- 云同步（浏览器账号云端，手动推送/拉取） --------------------- */
+
+function configStats(config) {
+  var sites = 0;
+  var schemes = 0;
+  var items = 0;
+  (config.profiles || []).forEach(function (p) {
+    sites += 1;
+    (p.schemes || []).forEach(function (s) {
+      schemes += 1;
+      items += (s.items || []).length;
+    });
+  });
+  return { sites: sites, schemes: schemes, items: items };
+}
+
+handlers.PW_SYNC_STATE = function () {
+  return Promise.all([syncStore.cloudState(), syncStore.getMaster(), store.load()]).then(function (r) {
+    return ok({
+      cloud: r[0],
+      remembered: !!r[1],
+      stats: configStats(r[2])
+    });
+  });
+};
+
+handlers.PW_SYNC_UPLOAD = function (msg) {
+  return Promise.all([store.load(), syncStore.getMaster()]).then(function (r) {
+    var config = r[0];
+    if (!(config.profiles || []).length) return fail('本机还没有任何配置，无需上传');
+    // 未输入主密码时使用本机记住的（弹层里勾选「记住」时保存过）
+    var pwd = String(msg.masterPassword || r[1] || '');
+    return syncStore.upload(config, pwd, !!msg.remember).then(function (res) {
+      res.stats = configStats(config);
+      return ok(res);
+    });
+  });
+};
+
+handlers.PW_SYNC_DOWNLOAD = function (msg) {
+  return Promise.all([syncStore.readEnvelope(), syncStore.getMaster()])
+    .then(function (r) {
+      var pwd = String(msg.masterPassword || r[1] || '');
+      return pwcrypto.decryptJson(r[0], pwd);
+    })
+    .then(function (config) {
+      var check = schema.validateImport(config);
+      if (!check.ok) return fail((check.errors || []).join('；') || '云端数据校验未通过');
+      return ok({ config: check.config });
+    });
+};
+
+handlers.PW_SYNC_CLEAR = function () {
+  return syncStore.clear().then(function () { return ok(); });
+};
+
+handlers.PW_SYNC_FORGET = function () {
+  return syncStore.forgetMaster().then(function () { return ok(); });
 };
 
 /* ------------------------------ 安装初始化 ------------------------------ */

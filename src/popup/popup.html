@@ -108,6 +108,7 @@
         <div class="panel-head">
           <h2 class="panel-title">全部配置</h2>
           <div class="head-actions">
+            <button type="button" class="btn btn-mini" id="btnSync">云同步</button>
             <button type="button" class="btn btn-mini" id="btnImport">导入</button>
             <button type="button" class="btn btn-mini btn-primary" id="btnExport">导出</button>
           </div>
@@ -218,6 +219,41 @@
       <div class="actions">
         <button type="button" class="btn btn-primary" id="btnExportConfirm">导出文件</button>
         <button type="button" class="btn btn-ghost" data-close="1">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 云同步弹层（浏览器账号云端，手动推送/拉取） -->
+  <div class="modal" id="syncModal" hidden>
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-card">
+      <h3 class="modal-title">云同步（浏览器账号）</h3>
+
+      <div class="sync-cloud" id="syncCloudInfo">正在读取云端状态…</div>
+
+      <div class="row">
+        <label class="row-label" for="syncMaster">主密码</label>
+        <input type="password" id="syncMaster" class="input" placeholder="至少 6 位">
+      </div>
+
+      <label class="switch" for="syncRemember">
+        <span>在本机记住主密码</span>
+        <input type="checkbox" id="syncRemember">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+      </label>
+
+      <p class="hint">上传与恢复使用同一个主密码（AES-GCM，云端只存密文，主密码不出本机）。不勾选「记住」时请自行保管，遗忘后云端数据无法恢复。</p>
+      <p class="hint" id="syncRememberHint" hidden></p>
+
+      <div class="preview" id="syncPreview" hidden></div>
+      <div class="errors" id="syncErrors" hidden></div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="btnSyncUpload">上传到云端</button>
+        <button type="button" class="btn" id="btnSyncRestore">从云端恢复</button>
+        <button type="button" class="btn btn-ghost" id="btnSyncForget" hidden>忘记主密码</button>
+        <button type="button" class="btn btn-ghost" id="btnSyncClear" hidden>清除云端</button>
+        <button type="button" class="btn btn-ghost" data-close="1">关闭</button>
       </div>
     </div>
   </div>
